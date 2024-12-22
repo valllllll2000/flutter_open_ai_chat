@@ -36,7 +36,7 @@ class ChatDatasourceLocalImpl extends ChatDatasource {
   }
 
   Future<String> readJsonAndGetContent() async {
-    final jsonString = await rootBundle.loadString('assets/json/response.json');
+    final jsonString = await rootBundle.loadString('assets/json/response_arabic.json');
     final jsonMap = jsonDecode(jsonString);
     final choices = jsonMap['choices'] as List;
     final message = choices[0]['message'] as Map<String, dynamic>;

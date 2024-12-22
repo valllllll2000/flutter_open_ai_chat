@@ -35,7 +35,8 @@ class ChatDatasourceImpl extends ChatDatasource {
           },
           body: body);
 
-      Map<String, dynamic> jsonMap = jsonDecode(response.body);
+      //Map<String, dynamic> jsonMap = jsonDecode(response.body);
+      Map<String, dynamic> jsonMap = json.decode(utf8.decode(response.bodyBytes));
       var error = jsonMap['error'];
       if (error != null) {
         throw HttpException(error['message']);
