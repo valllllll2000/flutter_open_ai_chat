@@ -15,39 +15,56 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<ChatBloc>().state;
     return BlocListener<ChatBloc, ChatState>(
+      listenWhen: (previous, current) =>
+          previous.errorMessage != current.errorMessage,
       listener: (context, state) {
-        if (state.isError) {
+        var errorMessage = state.errorMessage;
+        if (errorMessage.isNotEmpty) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
-              const SnackBar(content: Text('Open AI failed to respond')),
+              SnackBar(content: Text('Open AI API error: $errorMessage')),
             );
         }
       },
-      child: Scaffold(
-        appBar: const PreferredSize(
-            preferredSize: Size.fromHeight(kToolbarHeight),
-            child: _ChatAppBar()),
+      child: const Scaffold(
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(kToolbarHeight),
+          child: _ChatAppBar(),
+        ),
         body: SafeArea(
           child: Column(
             children: [
-              const _ChatContentWidget(),
-              if (state.isSending) ...[
-                SpinKitThreeBounce(
-                  color: Colors.blueGrey.shade50,
-                  size: 18,
-                )
-              ],
-              const SizedBox(
+              _ChatContentWidget(),
+              _LoadingWidget(),
+              SizedBox(
                 height: 16,
               ),
-              const _ChatInputWidget()
+              _ChatInputWidget()
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LoadingWidget extends StatelessWidget {
+  const _LoadingWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ChatBloc, ChatState>(
+      buildWhen: (previous, current) => current.isLoading != previous.isLoading,
+      builder: (context, state) {
+        return state.isLoading
+            ? SpinKitThreeBounce(
+                color: Colors.blueGrey.shade50,
+                size: 18,
+              )
+            : const SizedBox.shrink();
+      },
     );
   }
 }
@@ -79,22 +96,28 @@ class _ChatContentWidgetState extends State<_ChatContentWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = context.watch<ChatBloc>().state.messages;
     return BlocListener<ChatBloc, ChatState>(
       listenWhen: (previous, current) =>
           previous.messages.length < current.messages.length,
       listener: (context, state) {
         _scrollToEnd();
       },
-      child: Flexible(
-        child: ListView.builder(
-            controller: _controller,
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              return ChatWidget(
-                chat: messages[index],
-              );
-            }),
+      child: BlocBuilder<ChatBloc, ChatState>(
+        builder: (context, state) {
+          final messages = state.messages;
+          return Flexible(
+            child: ListView.builder(
+                controller: _controller,
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  return ChatWidget(
+                    chat: messages[index],
+                    showResend: index == messages.length - 1 &&
+                        state.errorMessage.isNotEmpty,
+                  );
+                }),
+          );
+        },
       ),
     );
   }
@@ -118,8 +141,12 @@ class _ChatInputWidgetState extends State<_ChatInputWidget> {
   final FocusNode _focusNode = FocusNode();
 
   void _sendMessage(BuildContext context, String value) {
+    //TODO: disable while sending message
     _textController.clear();
     _focusNode.unfocus();
+    if (value.trim().isEmpty) {
+      return;
+    }
     context.read<ChatBloc>().add(
         SendConversation(value, context.read<ModelBloc>().state.currentModel));
   }

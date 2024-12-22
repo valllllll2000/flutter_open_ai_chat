@@ -24,7 +24,7 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  final bool useLocalDb = true;
+  final bool useLocalDb = false;
 
   @override
   Widget build(BuildContext context) {

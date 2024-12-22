@@ -12,3 +12,9 @@ class SendConversation extends ChatEvent {
 
   SendConversation(this.question, this.modelId);
 }
+
+class ResendLast extends ChatEvent {
+  final String modelId;
+
+  ResendLast(this.modelId);
+}

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_chat_gpt/domain/models/chat_model.dart';
 
 import '../../constants/constants.dart';
@@ -27,10 +28,12 @@ class ChatDatasourceImpl extends ChatDatasource {
           {"role": "user", "content": chat}
         ]
       });
-      final response = await http.post(Uri.parse('${baseURL}chat/completions'), headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${Environment.API_KEY}'
-      }, body: body);
+      final response = await http.post(Uri.parse('${baseURL}chat/completions'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${Environment.API_KEY}'
+          },
+          body: body);
 
       Map<String, dynamic> jsonMap = jsonDecode(response.body);
       var error = jsonMap['error'];
@@ -44,7 +47,9 @@ class ChatDatasourceImpl extends ChatDatasource {
       String content = message['content'] as String;
       return ChatModel(message: content, user: User.ai);
     } catch (error) {
-      print('sendChatError $error');
+      if (kDebugMode) {
+        print('sendChatError $error');
+      }
       rethrow;
     }
   }

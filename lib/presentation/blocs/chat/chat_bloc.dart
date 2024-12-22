@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_chat_gpt/domain/models/chat_model.dart';
@@ -10,10 +13,14 @@ part 'chat_state.dart';
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc(this.chatRepository)
       : super(const ChatState(
-            messages: [], isLoading: false, isError: false, isSending: true)) {
+            messages: [],
+            isLoading: false,
+            errorMessage: '',
+            isSending: true)) {
     on<LoadChats>(_loadChats);
 
     on<SendConversation>(_sendConversation);
+    on<ResendLast>(_resendLastConversation);
 
     add(LoadChats());
   }
@@ -28,16 +35,33 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   Future<void> _sendConversation(
       SendConversation event, Emitter<ChatState> emit) async {
     final chatModel = ChatModel(message: event.question, user: User.human);
-    emit(state
-        .copyWith(messages: [...state.messages, chatModel], isSending: true));
+    emit(state.copyWith(
+        messages: [...state.messages, chatModel],
+        isSending: true,
+        errorMessage: ''));
+    await sendMessageToAPI(event.question, event.modelId, emit);
+  }
+
+  Future<void> sendMessageToAPI(
+      String question, String modelId, Emitter<ChatState> emit) async {
     try {
-      final aiResponse =
-          await chatRepository.sendChat(event.question, event.modelId);
+      final aiResponse = await chatRepository.sendChat(question, modelId);
       emit(state.copyWith(
-          messages: [...state.messages, aiResponse], isSending: false));
-    } catch (e) {
-      print(e);
-      emit(state.copyWith(isSending: false, isError: true));
+          messages: [...state.messages, aiResponse],
+          isSending: false,
+          errorMessage: ''));
+    } on HttpException catch (e) {
+      if (kDebugMode) {
+        print(e);
+      }
+      emit(state.copyWith(isSending: false, errorMessage: e.message));
     }
+  }
+
+  Future<void> _resendLastConversation(
+      ResendLast event, Emitter<ChatState> emit) async {
+    final lastUserMessage = state.messages.last.message;
+    emit(state.copyWith(isSending: true, errorMessage: ''));
+    await sendMessageToAPI(lastUserMessage, event.modelId, emit);
   }
 }
